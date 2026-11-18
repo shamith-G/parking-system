@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Check in / out{% endblock %}
+{% block subtitle %}Park a vehicle, then check it out to generate the bill{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="card-head"><h2>Check a vehicle in</h2></div>
+  {% if free_vehicles and free_slots %}
+  <form method="post" action="{{ url_for('checkin') }}" class="form-grid">
+    <div>
+      <label for="vehicle_id">Vehicle</label>
+      <select id="vehicle_id" name="vehicle_id" required>
+        {% for v in free_vehicles %}
+          <option value="{{ v.vehicle_id }}" data-type="{{ v.vehicle_type }}">{{ v.plate_no }} ({{ v.vehicle_type }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="slot_id">Slot (only matching types are shown)</label>
+      <select id="slot_id" name="slot_id" required>
+        {% for s in free_slots %}
+          <option value="{{ s.slot_id }}" data-type="{{ s.type_name }}">{{ s.lot_name }} · {{ s.slot_number }} ({{ s.type_name }}, Rs. {{ '%.0f'|format(s.rate_per_hour) }}/hr)</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><button type="submit">Check in</button></div>
+  </form>
+  {% elif not free_vehicles %}
+    <div class="empty">Every registered vehicle is already parked, or no vehicles are registered yet.</div>
+  {% else %}
+    <div class="empty">No slots are available right now.</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div><h2>Parking sessions</h2><div class="sub">Billed per started hour (minimum one hour) at the slot type's hourly rate</div></div>
+  </div>
+  {% if sessions %}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>#</th><th>Vehicle</th><th>Lot / slot</th><th>Entry</th><th>Exit</th><th>Status</th><th>Amount</th><th>Check out</th></tr></thead>
+      <tbody>
+        {% for s in sessions %}
+        <tr>
+          <td>#{{ s.session_id }}</td>
+          <td><strong>{{ s.plate_no }}</strong><span class="sub-line">{{ s.vehicle_type }}</span></td>
+          <td>{{ s.lot_name }} <span class="sub-line">Slot {{ s.slot_number }}</span></td>
+          <td class="num-cell">{{ s.entry_time.strftime('%d/%m/%Y') }}<span class="sub-line">{{ s.entry_time.strftime('%H:%M') }}</span></td>
+          <td class="num-cell">{% if s.exit_time %}{{ s.exit_time.strftime('%d/%m/%Y') }}<span class="sub-line">{{ s.exit_time.strftime('%H:%M') }}</span>{% else %}—{% endif %}</td>
+          <td>
+            {% if s.exit_time is none %}<span class="badge active">Parked</span>
+            {% else %}<span class="badge done">Paid</span>{% endif %}
+          </td>
+          <td class="num-cell">{% if s.amount is not none %}Rs. {{ s.amount|money }}<span class="sub-line">{{ s.payment_mode }}</span>{% else %}—{% endif %}</td>
+          <td>
+            {% if s.exit_time is none %}
+            <form method="post" action="{{ url_for('checkout', session_id=s.session_id) }}" class="inline">
+              <select name="payment_mode" style="width: auto; background: var(--card-2); border-color: var(--line)">
+                {% for m in modes %}<option>{{ m }}</option>{% endfor %}
+              </select>
+              <button type="submit">Check out &amp; bill</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">No sessions yet.</div>
+  {% endif %}
+</div>
+
+<script>
+  // Show only the slots whose type matches the selected vehicle's type.
+  (function () {
+    var vehicle = document.getElementById('vehicle_id');
+    var slot = document.getElementById('slot_id');
+    if (!vehicle || !slot) return;
+    function filterSlots() {
+      var type = vehicle.options[vehicle.selectedIndex].dataset.type;
+      var firstMatch = null;
+      Array.prototype.forEach.call(slot.options, function (opt) {
+        var match = opt.dataset.type === type;
+        opt.hidden = !match;
+        opt.disabled = !match;
+        if (match && !firstMatch) firstMatch = opt;
+      });
+      if (firstMatch) { slot.value = firstMatch.value; }
+    }
+    vehicle.addEventListener('change', filterSlots);
+    filterSlots();
+  })();
+</script>
+{% endblock %}

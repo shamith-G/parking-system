@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import table %}
+{% block title %}Reports{% endblock %}
+{% block subtitle %}Six reports built with joins, GROUP BY, aggregates and views{% endblock %}
+{% block content %}
+{% for r in reports %}
+<div class="card">
+  <div class="card-head">
+    <div><h2>{{ loop.index }}. {{ r.title }}</h2><div class="sub">{{ r.description }}</div></div>
+  </div>
+  {{ table(r.rows) }}
+</div>
+{% endfor %}
+{% endblock %}

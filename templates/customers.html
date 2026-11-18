@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Customers{% endblock %}
+{% block subtitle %}Register customers and keep their contact details up to date{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="card-head"><h2>Add a customer</h2></div>
+  <form method="post" class="form-grid">
+    <div><label for="full_name">Full name</label><input id="full_name" name="full_name" required maxlength="100" placeholder="e.g. Ananya Sharma"></div>
+    <div><label for="phone">Phone</label><input id="phone" name="phone" required maxlength="15" placeholder="10-digit number"></div>
+    <div><label for="email">Email (optional)</label><input id="email" name="email" type="email" maxlength="100" placeholder="name@mail.com"></div>
+    <div><button type="submit">Add customer</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div><h2>All customers</h2><div class="sub">Edit a name, phone or email in place, then press Save</div></div>
+  </div>
+  {% if customers %}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Registered</th><th>Vehicles</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td>#{{ c.customer_id }}</td>
+          <td>
+            <div class="who-cell">
+              <span class="avatar" style="--h: {{ c.full_name|hue }}">{{ c.full_name|initials }}</span>
+              <input form="edit-{{ c.customer_id }}" name="full_name" value="{{ c.full_name }}" required>
+            </div>
+          </td>
+          <td><input form="edit-{{ c.customer_id }}" name="phone" value="{{ c.phone }}" required></td>
+          <td><input form="edit-{{ c.customer_id }}" name="email" type="email" value="{{ c.email or '' }}" placeholder="—"></td>
+          <td class="num-cell">{{ c.registered_on.strftime('%d/%m/%Y') }}</td>
+          <td><span class="pill {{ 'UPI' if c.vehicles else 'mute' }}">{{ c.vehicles }}</span></td>
+          <td>
+            <div class="row-actions">
+              <button form="edit-{{ c.customer_id }}" type="submit" class="secondary">Save</button>
+              <form method="post" action="{{ url_for('delete_customer', customer_id=c.customer_id) }}" class="inline"
+                    onsubmit="return confirm('Delete this customer?');">
+                <button type="submit" class="danger">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {# The edit forms live outside the table (a <form> inside <tr> is invalid HTML); inputs link to them via the form="" attribute. #}
+  {% for c in customers %}
+    <form method="post" action="{{ url_for('update_customer', customer_id=c.customer_id) }}" id="edit-{{ c.customer_id }}"></form>
+  {% endfor %}
+  {% else %}
+    <div class="empty">No customers yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

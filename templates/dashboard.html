@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% from "_macros.html" import table, icon %}
+{% block title %}Dashboard{% endblock %}
+{% block subtitle %}Live overview of your parking lots{% endblock %}
+{% block content %}
+
+{% if totals %}
+<div class="stats">
+  <div class="stat">
+    <div class="stat-top"><span class="chip">{{ icon('slots') }}</span> Total slots</div>
+    <div class="num">{{ totals.total_slots }}</div>
+    <div class="note"><b>{{ totals.available_slots }}</b> available right now</div>
+  </div>
+  <div class="stat">
+    <div class="stat-top"><span class="chip warn">{{ icon('car') }}</span> Parked now</div>
+    <div class="num">{{ totals.parked_now }}</div>
+    <div class="note">of {{ totals.total_sessions }} sessions in total</div>
+  </div>
+  <div class="stat">
+    <div class="stat-top"><span class="chip ok">{{ icon('rupee') }}</span> Total revenue</div>
+    <div class="num">Rs. {{ totals.total_revenue|money }}</div>
+    <div class="note">avg <b>Rs. {{ totals.avg_payment|money }}</b> per payment</div>
+  </div>
+  <div class="stat">
+    <div class="stat-top"><span class="chip pink">{{ icon('users') }}</span> Customers</div>
+    <div class="num">{{ totals.total_customers }}</div>
+    <div class="note">registered accounts</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-main">
+  <div>
+    <div class="card">
+      <div class="card-head">
+        <div><h2>Revenue summary</h2><div class="sub">Daily revenue, latest {{ daily|length }} day{{ '' if daily|length == 1 else 's' }} with payments</div></div>
+        <a class="ghost-link" href="{{ url_for('reports') }}">View reports</a>
+      </div>
+      {% if daily %}
+        {% set top = daily|map(attribute='revenue')|max %}
+        <div class="bars">
+          {% for d in daily %}
+            <div class="bar-col {{ 'top' if d.revenue == top else '' }}" style="--h: {{ (d.pct * 1.8)|round|int }}px">
+              <span class="bar-tip">Rs. {{ d.revenue|money }}</span>
+              <div class="bar" style="height: {{ (d.pct * 1.8)|round|int }}px"></div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="bar-labels">
+          {% for d in daily %}<span>{{ d.day.strftime('%d %b') }}</span>{% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">No payments yet, so there is nothing to chart.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Recent payments</h2>
+        <a class="ghost-link" href="{{ url_for('payments') }}">View all</a>
+      </div>
+      {% if recent %}
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Customer</th><th>Vehicle</th><th>Date</th><th>Amount</th><th>Mode</th></tr></thead>
+          <tbody>
+            {% for p in recent %}
+            <tr>
+              <td><span class="who-cell"><span class="avatar" style="--h: {{ p.full_name|hue }}">{{ p.full_name|initials }}</span>{{ p.full_name }}</span></td>
+              <td><strong>{{ p.plate_no }}</strong><span class="sub-line">{{ p.lot_name }}</span></td>
+              <td class="num-cell">{{ p.payment_time.strftime('%d %b, %H:%M') }}</td>
+              <td class="num-cell">Rs. {{ p.amount|money }}</td>
+              <td><span class="pill {{ p.payment_mode }}">{{ p.payment_mode }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="empty">No payments yet.</div>{% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Slots overview</h2><a class="ghost-link" href="{{ url_for('slots') }}">Manage</a></div>
+      {% for b in slot_bars %}
+        <div class="prog">
+          <div class="prog-top"><span>{{ b.label }}</span><span>{{ b.n }} · {{ b.pct }}%</span></div>
+          <div class="track"><div class="fill {{ b.cls }}" style="width: {{ b.pct }}%"></div></div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="tile-blue">
+      <div class="lbl">Total revenue</div>
+      <div class="big">Rs. {{ totals.total_revenue|money if totals else '0.00' }}</div>
+      {% if spark_line %}
+      <svg class="spark" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+        <path d="{{ spark_area }}" fill="url(#sg)"/>
+        <path d="{{ spark_line }}" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      </svg>
+      {% else %}<div style="height: 22px"></div>{% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Payments by mode</h2></div>
+      {% for m in modes %}
+        <div class="prog">
+          <div class="prog-top"><span>{{ m.payment_mode }}</span><span>Rs. {{ m.total|money }} · {{ m.pct }}%</span></div>
+          <div class="track"><div class="fill {{ m.payment_mode }}" style="width: {{ m.pct }}%"></div></div>
+        </div>
+      {% else %}<div class="empty">No payments yet.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div><h2>Currently parked</h2><div class="sub">Live, from the v_current_occupancy view</div></div>
+    <a class="ghost-link" href="{{ url_for('sessions') }}">Check in / out</a>
+  </div>
+  {{ table(occupancy, "No vehicles are parked right now.") }}
+</div>
+
+<div class="grid-main" style="grid-template-columns: 1fr 1fr">
+  <div class="card">
+    <div class="card-head"><div><h2>Slot availability by lot</h2><div class="sub">View: v_slot_availability</div></div></div>
+    {{ table(availability) }}
+  </div>
+  <div class="card">
+    <div class="card-head"><div><h2>Revenue by lot</h2><div class="sub">View: v_lot_revenue</div></div></div>
+    {{ table(revenue) }}
+  </div>
+</div>
+{% endblock %}

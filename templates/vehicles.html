@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Vehicles{% endblock %}
+{% block subtitle %}Every vehicle belongs to a customer{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="card-head"><h2>Register a vehicle</h2></div>
+  {% if owners %}
+  <form method="post" class="form-grid">
+    <div>
+      <label for="customer_id">Owner</label>
+      <select id="customer_id" name="customer_id" required>
+        {% for o in owners %}<option value="{{ o.customer_id }}">{{ o.full_name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label for="plate_no">Plate number</label><input id="plate_no" name="plate_no" required maxlength="15" placeholder="KA01AB1234"></div>
+    <div>
+      <label for="vehicle_type">Type</label>
+      <select id="vehicle_type" name="vehicle_type">
+        {% for t in types %}<option {{ 'selected' if t == 'Car' else '' }}>{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><button type="submit">Add vehicle</button></div>
+  </form>
+  {% else %}
+    <div class="empty">Add a customer first, then register their vehicles.</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>All vehicles</h2></div>
+  {% if vehicles %}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>ID</th><th>Plate</th><th>Type</th><th>Owner</th><th>Phone</th><th></th></tr></thead>
+      <tbody>
+        {% for v in vehicles %}
+        <tr>
+          <td>#{{ v.vehicle_id }}</td>
+          <td><strong>{{ v.plate_no }}</strong></td>
+          <td><span class="pill {{ {'Bike': 'ok', 'Car': 'UPI', 'SUV': 'warn'}[v.vehicle_type] }}">{{ v.vehicle_type }}</span></td>
+          <td><span class="who-cell"><span class="avatar" style="--h: {{ v.owner|hue }}">{{ v.owner|initials }}</span>{{ v.owner }}</span></td>
+          <td class="num-cell">{{ v.phone }}</td>
+          <td>
+            <form method="post" action="{{ url_for('delete_vehicle', vehicle_id=v.vehicle_id) }}" class="inline"
+                  onsubmit="return confirm('Delete vehicle {{ v.plate_no }}?');">
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">No vehicles yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

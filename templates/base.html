@@ -1,0 +1,139 @@
+{% from "_macros.html" import icon %}
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · ParkCommand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    /* Apply the saved theme before first paint so there is no flash. */
+    try { var t = localStorage.getItem('sp-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  </script>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('dashboard') }}">
+      <span class="brand-mark">P</span> ParkCommand
+    </a>
+
+    <nav class="nav">
+      <div class="nav-label">Menu</div>
+      {% set links = [
+        ('dashboard', 'Dashboard', 'dashboard'),
+        ('sessions', 'Check in / out', 'swap'),
+        ('slots', 'Lots & slots', 'slots'),
+        ('vehicles', 'Vehicles', 'car'),
+        ('customers', 'Customers', 'users'),
+        ('payments', 'Payments', 'card'),
+        ('reports', 'Reports', 'chart')
+      ] %}
+      {% for endpoint, label, ico in links %}
+        <a href="{{ url_for(endpoint) }}" class="{{ 'active' if request.endpoint == endpoint else '' }}">
+          {{ icon(ico) }} {{ label }}
+          {% if endpoint == 'sessions' and parked_badge %}<span class="pill-count" title="Vehicles parked now">{{ parked_badge }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+
+    <div class="sidebar-foot">
+      <strong>Park and Relax</strong>
+      Easy way to find space
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="search">
+        {{ icon('search') }}
+        <input id="global-search" type="search" placeholder="Search this page…" autocomplete="off" aria-label="Search the tables on this page">
+      </div>
+      <div class="topbar-right">
+        <button type="button" class="icon-btn" id="theme-toggle" title="Switch light / dark theme" aria-label="Switch theme">
+          <span class="when-dark">{{ icon('sun') }}</span>
+          <span class="when-light" hidden>{{ icon('moon') }}</span>
+        </button>
+        <div class="user">
+          <span class="avatar" style="--h: 225; width: 36px; height: 36px; font-size: .8rem">PM</span>
+          <div class="who"><b>Parking Manager</b><span>Administrator</span></div>
+        </div>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}" role="status">
+          <span>{{ message }}</span>
+          <button type="button" class="x" aria-label="Dismiss">&times;</button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="page-head">
+      <div>
+        <h1>{% block heading %}{{ self.title() }}{% endblock %}</h1>
+        <div class="sub">{% block subtitle %}{% endblock %}</div>
+      </div>
+      <div class="date-chip">{{ icon('calendar', 15) }} {{ today.strftime('%a, %d %b %Y') }}</div>
+    </div>
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script>
+(function () {
+  /* ---- theme toggle (remembered per browser) ---- */
+  var root = document.documentElement;
+  var btn = document.getElementById('theme-toggle');
+  function paint() {
+    var dark = root.getAttribute('data-theme') !== 'light';
+    btn.querySelector('.when-dark').hidden = !dark;
+    btn.querySelector('.when-light').hidden = dark;
+  }
+  btn.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('sp-theme', next); } catch (e) {}
+    paint();
+  });
+  paint();
+
+  /* ---- dismissable flash messages ---- */
+  document.querySelectorAll('.flash').forEach(function (el) {
+    el.querySelector('.x').addEventListener('click', function () { el.remove(); });
+    if (el.classList.contains('success')) setTimeout(function () { el.remove(); }, 7000);
+  });
+
+  /* ---- search box filters every table row on the page ---- */
+  var box = document.getElementById('global-search');
+  box.addEventListener('input', function () {
+    var q = box.value.trim().toLowerCase();
+    document.querySelectorAll('.table-scroll').forEach(function (wrap) {
+      var shown = 0;
+      wrap.querySelectorAll('tbody tr').forEach(function (tr) {
+        var text = tr.textContent;
+        tr.querySelectorAll('input').forEach(function (i) { text += ' ' + i.value; });
+        var hit = !q || text.toLowerCase().indexOf(q) !== -1;
+        tr.hidden = !hit;
+        if (hit) shown++;
+      });
+      var note = wrap.nextElementSibling;
+      if (!note || !note.classList.contains('no-results')) {
+        note = document.createElement('div');
+        note.className = 'no-results';
+        note.textContent = 'No matching rows.';
+        wrap.after(note);
+      }
+      note.style.display = (q && !shown) ? 'block' : 'none';
+    });
+  });
+})();
+</script>
+</body>
+</html>

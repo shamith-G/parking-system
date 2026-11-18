@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Lots & slots{% endblock %}
+{% block heading %}Lots &amp; slots{% endblock %}
+{% block subtitle %}Manage parking lots, slots and hourly rates{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="card-head">
+    <div><h2>Hourly rates</h2><div class="sub">Stored once per slot type, so one change updates every slot of that type</div></div>
+  </div>
+  <div class="rate-grid">
+    {% for t in types %}
+    <form method="post" action="{{ url_for('update_rate', type_id=t.type_id) }}" class="rate-card">
+      <label for="rate-{{ t.type_id }}">{{ t.type_name }} · Rs. per hour</label>
+      <div class="row-actions" style="flex-wrap: nowrap">
+        <input id="rate-{{ t.type_id }}" name="rate_per_hour" type="number" step="0.01" min="0.01" value="{{ t.rate_per_hour }}" required>
+        <button type="submit" class="secondary">Save</button>
+      </div>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="grid-main" style="grid-template-columns: 1fr 1fr">
+  <div class="card">
+    <div class="card-head"><h2>Add a parking lot</h2></div>
+    <form method="post" action="{{ url_for('add_lot') }}" class="form-grid">
+      <div><label for="lot_name">Lot name</label><input id="lot_name" name="lot_name" required maxlength="100" placeholder="e.g. Airport Parking"></div>
+      <div><label for="location">Location</label><input id="location" name="location" required maxlength="150" placeholder="Area, city"></div>
+      <div><button type="submit">Add lot</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Add a slot</h2></div>
+    {% if lots %}
+    <form method="post" class="form-grid">
+      <div>
+        <label for="lot_id">Lot</label>
+        <select id="lot_id" name="lot_id" required>
+          {% for l in lots %}<option value="{{ l.lot_id }}">{{ l.lot_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="type_id">Slot type</label>
+        <select id="type_id" name="type_id" required>
+          {% for t in types %}<option value="{{ t.type_id }}">{{ t.type_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label for="slot_number">Slot number</label><input id="slot_number" name="slot_number" required maxlength="10" placeholder="C1"></div>
+      <div><button type="submit">Add slot</button></div>
+    </form>
+    {% else %}
+      <div class="empty">Add a parking lot first.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>All slots</h2>
+    <form method="get" class="inline">
+      <select name="lot_id" onchange="this.form.submit()" style="width: auto">
+        <option value="">All lots</option>
+        {% for l in lots %}<option value="{{ l.lot_id }}" {{ 'selected' if lot_filter == l.lot_id else '' }}>{{ l.lot_name }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+  {% if slots %}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Lot</th><th>Slot</th><th>Type</th><th>Rate / hr</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for s in slots %}
+        <tr>
+          <td>{{ s.lot_name }}</td>
+          <td><strong>{{ s.slot_number }}</strong></td>
+          <td><span class="pill {{ {'Bike': 'ok', 'Car': 'UPI', 'SUV': 'warn'}[s.type_name] }}">{{ s.type_name }}</span></td>
+          <td class="num-cell">Rs. {{ s.rate_per_hour|money }}</td>
+          <td><span class="badge {{ s.status }}">{{ s.status }}</span></td>
+          <td>
+            <div class="row-actions">
+              {% if s.status == 'Maintenance' %}
+                <form method="post" action="{{ url_for('set_slot_status', slot_id=s.slot_id) }}" class="inline">
+                  <input type="hidden" name="status" value="Available">
+                  <button type="submit" class="secondary">Mark available</button>
+                </form>
+              {% elif s.status == 'Available' %}
+                <form method="post" action="{{ url_for('set_slot_status', slot_id=s.slot_id) }}" class="inline">
+                  <input type="hidden" name="status" value="Maintenance">
+                  <button type="submit" class="secondary">Maintenance</button>
+                </form>
+              {% endif %}
+              <form method="post" action="{{ url_for('delete_slot', slot_id=s.slot_id) }}" class="inline"
+                    onsubmit="return confirm('Delete slot {{ s.slot_number }}?');">
+                <button type="submit" class="danger">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">No slots found.</div>
+  {% endif %}
+</div>
+{% endblock %}
